@@ -29,7 +29,9 @@
   },
   "dependencies": {
     "@agentuity/sdk": "^0.0.157",
-    "@google/genai": "^1.30.0"
+    "@google/genai": "^1.30.0",
+    "langextract": "^1.2.0",
+    "source-map-js": "^1.2.1"
   },
   "module": "index.ts"
 }
