@@ -1,4 +1,4 @@
-import { runner } from '@agentuity/sdk';
+import '@agentuity/sdk';
 
 declare global {
   namespace NodeJS {
@@ -40,7 +40,9 @@ if (!process.env.AGENTUITY_TRANSPORT_URL) {
   }
 }
 
-runner(true, import.meta.dirname).catch((err) => {
+import { startBot } from './src/bot';
+
+startBot().catch((err) => {
   if (err instanceof Error) {
     console.error(err.message);
     console.error(err.stack);
