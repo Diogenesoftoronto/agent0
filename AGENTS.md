@@ -1,110 +1,36 @@
-# Agentuity JavaScript/TypeScript Agent Development
+# Vera - The Helpful Discord Agent
 
-This guide provides comprehensive instructions for developing AI agents using the Agentuity platform with JavaScript and TypeScript.
+Vera is a conversational AI agent designed to be a helpful and fun presence on your Discord server. She is built using the Agentuity SDK and runs as a standalone Discord bot.
 
-## 1. Agent Development Guidelines
+## Capabilities
 
-- Prefer using the `agentuity agent create` command to create a new Agent
-- Prefer loading types from the node modules package `@agentuity/sdk` in the node_modules folder
-- The file should export a default function
-- Prefer naming the default function Agent or the name of the Agent based on the context of the Agent description
-- All code should be in TypeScript format
-- Use the provided logger from the `AgentContext` interface such as `ctx.logger.info("my message: %s", "hello")`
+### 1. Conversational Assistant
+Vera can engage in natural conversations with users. She remembers context from previous interactions (per user/server) to provide more personalized responses.
+- **Memory**: Remembers the last message from a user to provide continuity.
+- **Personality**: Friendly, helpful, and aware of the server context.
 
-### Example Agent File
+### 2. Link Summarization
+When a user posts a link, Vera automatically visits the URL and provides a concise summary of the content.
+- **Supported Content**: General web pages, articles, and documentation.
+- **Benefit**: Saves users from clicking every link to know what it's about.
 
-```typescript
-import type { AgentRequest, AgentResponse, AgentContext } from "@agentuity/sdk";
+### 3. Tweet Expansion (X/Twitter)
+Vera detects Twitter/X links and fetches the full thread content.
+- **Thread Drafts**: Reconstructs the conversation thread from a single tweet link.
+- **Privacy**: Uses `xcancel` or similar proxies to fetch content without requiring a Twitter account.
 
-export default async function Agent(req: AgentRequest, resp: AgentResponse, ctx: AgentContext) {
-	return resp.json({hello: 'world'});
-}
-```
+### 4. Knowledge Extraction
+Vera actively learns from the conversation.
+- **Fact Extraction**: Identifies and stores key facts (triples) from user messages.
+- **Recall**: Uses recent knowledge to inform her responses.
 
-## 2. Core Interfaces
+## Architecture
 
-### AgentHandler
+Vera is implemented in `src/agents/vera/index.ts` (logic) and `src/bot.ts` (Discord interface).
 
-The main handler function type for an agent:
-
-```typescript
-type AgentHandler = (
-  request: AgentRequest,
-  response: AgentResponse,
-  context: AgentContext
-) => Promise<AgentResponseType>;
-```
-
-### AgentRequest
-
-The `AgentRequest` interface provides methods for accessing request data:
-
-- `request.trigger`: Gets the trigger type of the request
-- `request.metadata(key, defaultValue)`: Gets metadata associated with the request
-- `request.get(key, defaultValue)`: Gets the metadata value of the request
-- `request.data.contentType`: Gets the content type of the request payload
-- `request.data.json(): Promise<Json>`: Gets the payload as a JSON object
-- `request.data.text(): Promise<string>`: Gets the payload as a string
-- `request.data.buffer(): Promise<ArrayBuffer>`: Gets the payload as a ArrayBuffer
-- `request.data.binary(): Promise<ArrayBuffer>`: Gets the payload as a ArrayBuffer
-- `request.data.object<T>: Promise<T>`: Gets the payload as a typed object
-
-### AgentResponse
-
-The `AgentResponse` interface provides methods for creating responses:
-
-- `response.json(data, metadata)`: Creates a JSON response
-- `response.text(data, metadata)`: Creates a text response
-- `response.binary(data, metadata)`: Creates a binary response
-- `response.html(data, metadata)`: Creates an HTML response
-- `response.empty(metadata)`: Creates an empty response
-- `response.handoff(agent, args?)`: Redirects to another agent within the same project
-
-### AgentContext
-
-The `AgentContext` interface provides access to various capabilities:
-
-- `context.logger`: Logging functionality
-- `context.kv`: Key-Value storage
-- `context.vector`: Vector storage
-- `context.getAgent(params)`: Gets a handle to a remote agent
-- `context.tracer`: OpenTelemetry tracing
-
-## 3. Storage APIs
-
-### Key-Value Storage
-
-Access through `context.kv`:
-
-- `context.kv.get(name, key)`: Retrieves a value
-- `context.kv.set(name, key, value, params)`: Stores a value with optional params (KeyValueStorageSetParams)
-- `context.kv.delete(name, key)`: Deletes a value
-
-### Vector Storage
-
-Access through `context.vector`:
-
-- `context.vector.upsert(name, ...documents)`: Inserts or updates vectors
-- `context.vector.search(name, params)`: Searches for vectors
-- `context.vector.delete(name, ...ids)`: Deletes vectors
-
-## 4. Logging
-
-Access through `context.logger`:
-
-- `context.logger.debug(message, ...args)`: Logs a debug message
-- `context.logger.info(message, ...args)`: Logs an informational message
-- `context.logger.warn(message, ...args)`: Logs a warning message
-- `context.logger.error(message, ...args)`: Logs an error message
-- `context.logger.child(opts)`: Creates a child logger with additional context
-
-## 5. Best Practices
-
-- Use TypeScript for better type safety and IDE support
-- Import types from `@agentuity/sdk`
-- Use structured error handling with try/catch blocks
-- Leverage the provided logger for consistent logging
-- Use the storage APIs for persisting data
-- Consider agent communication for complex workflows
-
-For complete documentation, visit: https://agentuity.dev/SDKs/javascript/api-reference
+### Key Components
+- **`bot.ts`**: The Discord client entry point. Listens for `messageCreate` events.
+- **`memory.ts`**: Handles storing and retrieving user context and knowledge.
+- **`summaries.ts`**: Logic for fetching and summarizing web content.
+- **`tweets.ts`**: Logic for parsing and reconstructing Twitter threads.
+- **`llm.ts`**: Interface to the Large Language Model for generating responses and summaries.

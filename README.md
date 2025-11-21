@@ -1,108 +1,70 @@
 <div align="center">
     <img src="https://raw.githubusercontent.com/agentuity/cli/refs/heads/main/.github/Agentuity.png" alt="Agentuity" width="100"/> <br/>
-    <strong>Build Agents, Not Infrastructure</strong> <br/>
+    <strong>Agent0: Vera - The Discord Bot</strong> <br/>
     <br/>
-        <a target="_blank" href="https://app.agentuity.com/deploy" alt="Agentuity">
-            <img src="https://app.agentuity.com/img/deploy.svg" /> 
-        </a>
-    <br />
 </div>
 
-# 🤖 Bun Agent Project
+# 🤖 Agent0: Vera
 
-Welcome to your Agentuity Bun Agent project! This README provides essential information to help you get started with developing, testing, and deploying your AI agents.
+Welcome to **Agent0**, the home of **Vera**, a smart and helpful Discord bot powered by Agentuity.
+
+## 🌟 What is Vera?
+
+Vera is more than just a chatbot. She is an AI agent capable of:
+- **Summarizing Links**: Automatically provides summaries for shared URLs.
+- **Unrolling Tweets**: Fetches and displays full threads from X/Twitter links.
+- **Remembering Context**: Keeps track of conversations and learns facts about the server and users.
+- **Engaging Conversation**: Offers friendly and context-aware chat.
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have the following installed:
-
 - **Bun**: Version 1.2.4 or higher
+- **Discord Bot Token**: You need a bot application created in the [Discord Developer Portal](https://discord.com/developers/applications).
 
 ## 🚀 Getting Started
 
-### Authentication
+### 1. Setup Environment
 
-Before using Agentuity, you need to authenticate:
+Create a `.env` file in the root directory (or use the existing one) and add your Discord Bot Token:
 
-```bash
-agentuity login
+```env
+DISCORD_TOKEN=your_discord_bot_token_here
 ```
 
-This command will open a browser window where you can log in to your Agentuity account.
+*Note: If you are using Agentuity features, ensure your `AGENTUITY_API_KEY` is also set.*
 
-### Creating a New Agent
-
-To create a new agent in your project:
+### 2. Install Dependencies
 
 ```bash
-agentuity agent new
+bun install
 ```
 
-Follow the interactive prompts to configure your agent.
+### 3. Run the Bot
 
-### Development Mode
-
-Run your project in development mode with:
+You can start the bot in development mode using:
 
 ```bash
 agentuity dev
 ```
 
-This will start your project and open a new browser window connecting your agent to the Agentuity Console in DevMode, allowing you to test and debug your agent in real-time.
-
-## 🌐 Deployment
-
-When you're ready to deploy your agent to the Agentuity Cloud:
+Or directly via Bun:
 
 ```bash
-agentuity deploy
+bun run start
 ```
 
-This command will bundle your agent and deploy it to the cloud, making it accessible via the Agentuity platform.
+The bot will log in and print `Ready! Logged in as [Tag]` to the console.
 
-## 📚 Project Structure
+## 📚 Documentation
 
-```
-├── agents/             # Agent definitions and implementations
-├── node_modules/       # Dependencies
-├── package.json        # Project dependencies and scripts
-└── agentuity.yaml      # Agentuity project configuration
-```
+- **[AGENTS.md](./AGENTS.md)**: Detailed breakdown of Vera's capabilities and architecture.
+- **[skills/discord_bot_conversion.md](./skills/discord_bot_conversion.md)**: Notes on how this project was converted from a webhook agent to a Discord bot.
 
 ## 🔧 Configuration
 
-Your project configuration is stored in `agentuity.yaml`. This file defines your agents, development settings, and deployment configuration.
-
-## 🛠️ Advanced Usage
-
-### Environment Variables
-
-You can set environment variables for your project:
-
-```bash
-agentuity env set KEY VALUE
-```
-
-### Secrets Management
-
-For sensitive information, use secrets:
-
-```bash
-agentuity env set --secret KEY VALUE
-```
-
-## 📖 Documentation
-
-For comprehensive documentation on the Agentuity JavaScript SDK, visit:
-[https://agentuity.dev/SDKs/javascript](https://agentuity.dev/SDKs/javascript)
-
-## 🆘 Troubleshooting
-
-If you encounter any issues:
-
-1. Check the [documentation](https://agentuity.dev/SDKs/javascript)
-2. Join our [Discord community](https://discord.gg/agentuity) for support
-3. Contact the Agentuity support team
+The project is configured via `agentuity.yaml` and `package.json`.
+- **`src/bot.ts`**: The main entry point for the Discord bot.
+- **`src/agents/vera/`**: Contains the core logic for the agent.
 
 ## 📝 License
 
