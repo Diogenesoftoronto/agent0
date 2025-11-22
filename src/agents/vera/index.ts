@@ -1,24 +1,8 @@
 import type { AgentRequest, AgentResponse, AgentContext } from '@agentuity/sdk';
-import { AGENT_NAME } from './constants';
 import { buildDiscordPayload, sendToDiscord } from './discord';
-import { runModel } from './llm';
-import {
-  addMemoryRecord,
-  getMemory,
-  getRecentMemories,
-  rememberUser,
-} from './memory';
-import { summarizeLink } from './summaries';
-import { buildThreadFromTweet } from './tweets';
-import {
-  deriveMessageText,
-  extractUrls,
-  isTweetUrl,
-  safeJson,
-  serverOrDefault,
-} from './utils';
-import { extractKnowledge, formatKnowledge } from './knowledge';
-import { truncateContent } from './text';
+import { processVeraRequest } from './service';
+import { formatKnowledge } from './knowledge';
+import { deriveMessageText, safeJson } from './utils';
 export { welcome } from './welcome';
 
 export default async function Agent(
@@ -51,7 +35,7 @@ export default async function Agent(
       req.get(
         'userName',
         (parsedBody as { author?: { username?: string; name?: string } })?.author?.username ??
-          (parsedBody as { author?: { name?: string } })?.author?.name
+        (parsedBody as { author?: { name?: string } })?.author?.name
       ),
       'friend'
     );
@@ -70,96 +54,61 @@ export default async function Agent(
       req.get('threadName', (parsedBody as { thread_name?: string })?.thread_name)
     );
 
-    const previousMemory = await getMemory(ctx, serverId, userId);
-    await rememberUser(ctx, serverId, userId, userName, messageText, previousMemory);
+    // Use the shared service to process the request
+    const {
+      sections,
+      linkSummaries,
+      tweetThreads,
+      generalResponse,
+      knowledgeTriples,
+      knowledgeContext,
+    } =
+      await processVeraRequest(ctx, {
+        messageText,
+        userId,
+        userName,
+        serverId,
+        serverName,
+        isMentioned: false, // Webhooks don't have mention logic by default
+      });
 
-    const urls = extractUrls(messageText);
-    const tweetUrls = urls.filter(isTweetUrl);
-    const otherUrls = urls.filter((url) => !isTweetUrl(url));
-
-    const linkSummaries: string[] = [];
-    for (const url of otherUrls) {
-      linkSummaries.push(await summarizeLink(url, ctx, serverName));
-    }
-
-    const tweetThreads: { url: string; thread: string }[] = [];
-    for (const url of tweetUrls) {
-      tweetThreads.push(await buildThreadFromTweet(url, ctx, serverName, userName));
-    }
-
-    const knowledgeTriples = await extractKnowledge(messageText, ctx);
-    await addMemoryRecord(ctx, {
-      id: `${Date.now()}`,
-      serverId,
-      userId,
-      userName,
-      message: truncateContent(messageText),
-      knowledge: knowledgeTriples,
-      createdAtIso: new Date().toISOString(),
-    });
-    const recentKnowledge = await getRecentMemories(ctx, serverId, { userId, limit: 5 });
-    const knowledgeContext = recentKnowledge
-      .flatMap((rec) => rec.knowledge ?? [])
-      .slice(-5);
-
-    const conversationContext =
-      previousMemory?.lastMessage && previousMemory.lastMessage !== messageText
-        ? `Last time you said: "${previousMemory.lastMessage}". `
-        : '';
-
-    const generalResponse =
-      urls.length === 0
-        ? await runModel(
-            `You are ${AGENT_NAME}, a kind and fun multiuser assistant on a Discord server named "${serverOrDefault(
-              serverName
-            )}". ` +
-              `User "${userName}" sent: "${messageText}". ${conversationContext}` +
-              `Respond concisely with awareness of the server context and invite follow-ups if helpful.` +
-              (knowledgeContext.length > 0
-                ? ` Known recent facts: ${formatKnowledge(knowledgeContext)}`
-                : '')
-          )
-        : '';
-
-    const sections: string[] = [];
-    sections.push(
-      `Hi ${userName}! Here is what I found for ${serverOrDefault(serverName)} (I remember you were here before).`
-    );
+    // Build webhook-specific response with additional formatting
+    const webhookSections = [`Hi ${userName}! Here is what I found (I remember you were here before).`];
 
     if (linkSummaries.length > 0) {
-      sections.push(`Link summaries:\n${linkSummaries.join('\n')}`);
+      webhookSections.push(`Link summaries:\n${linkSummaries.join('\n')}`);
     }
 
     if (tweetThreads.length > 0) {
       const threadText = tweetThreads
         .map((entry) => `From ${entry.url} (via xcancel):\n${entry.thread}`)
         .join('\n\n');
-      sections.push(`Thread drafts:\n${threadText}`);
+      webhookSections.push(`Thread drafts:\n${threadText}`);
     }
 
     if (generalResponse) {
-      sections.push(generalResponse);
+      webhookSections.push(generalResponse);
     }
 
     if (knowledgeTriples.length > 0) {
-      sections.push(`Noted knowledge:\n${formatKnowledge(knowledgeTriples)}`);
+      webhookSections.push(`Noted knowledge:\n${formatKnowledge(knowledgeTriples)}`);
     } else if (knowledgeContext.length > 0) {
-      sections.push(`Recent knowledge I remember:\n${formatKnowledge(knowledgeContext)}`);
+      webhookSections.push(`Recent knowledge I remember:\n${formatKnowledge(knowledgeContext)}`);
     }
 
-    if (sections.length === 1) {
-      sections.push('No links detected, but I am ready to help with summaries or questions.');
+    if (webhookSections.length === 1) {
+      webhookSections.push('No links detected, but I am ready to help with summaries or questions.');
     }
 
     const discordPayload = buildDiscordPayload(
-      sections,
+      webhookSections,
       linkSummaries,
       tweetThreads,
       generalResponse
     );
     await sendToDiscord(webhookUrl, discordPayload, ctx, threadId, threadName);
 
-    return resp.text(sections.join('\n\n'));
+    return resp.text(webhookSections.join('\n\n'));
   } catch (error) {
     ctx.logger.error('Error running agent:', error);
 
