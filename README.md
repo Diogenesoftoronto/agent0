@@ -1,16 +1,12 @@
 <div align="center">
     <img src="https://raw.githubusercontent.com/agentuity/cli/refs/heads/main/.github/Agentuity.png" alt="Agentuity" width="100"/> <br/>
-    <strong>Build Agents, Not Infrastructure</strong> <br/>
-    <br/>
-        <a target="_blank" href="https://app.agentuity.com/deploy" alt="Agentuity">
-            <img src="https://app.agentuity.com/img/deploy.svg" /> 
-        </a>
+    <strong>Agent0: Vera</strong> <br/>
     <br/>
 </div>
 
 # 🤖 Agent0: Vera (Bun Agent Project)
 
-Welcome to your Agentuity Bun Agent project, **Agent0: Vera**—a smart and helpful Discord bot powered by Agentuity.
+Agent0 exists because I wanted a better Discord bot than what I experienced in the Latent Space server. That bot could spin up threads from tweets with summaries and an xcancel link. Vera does that too, and also remembers people in chat so you can ask about prior conversations or users.
 
 ## 🌟 What is Vera?
 
