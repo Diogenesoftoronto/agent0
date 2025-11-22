@@ -23,63 +23,56 @@ Vera is more than just a chatbot (not really). She is an AI agent capable of:
 
 ## 🚀 Getting Started
 
-### Authentication
+### 1. Discord Setup
 
-Before using Agentuity, log in:
+1.  **Create Application**: Go to the [Discord Developer Portal](https://discord.com/developers/applications) and click "New Application". Name it "Vera" (or whatever you like).
+2.  **Get Credentials**:
+    *   Copy the **Application ID** from the "General Information" page.
+    *   Go to the **Bot** tab, click "Reset Token", and copy the **Token**.
+3.  **Enable Intents**:
+    *   On the **Bot** tab, scroll down to "Privileged Gateway Intents".
+    *   Enable **Message Content Intent**, **Server Members Intent**, and **Presence Intent**.
+    *   Save changes.
+4.  **Invite Bot**:
+    *   Go to the **OAuth2** > **URL Generator** tab.
+    *   Select `bot` and `applications.commands` scopes.
+    *   Select `Send Messages`, `Read Messages/View Channels`, `Embed Links`, and `Attach Files` permissions.
+    *   Copy the generated URL and open it in your browser to invite the bot to your test server.
 
-```bash
-agentuity login
-```
+### 2. Environment Configuration
 
-### 1. Setup Environment
-
-Create a `.env` file in the root directory (or use the existing one) and add your Discord application credentials and Google API key:
+Create a `.env` file in the root directory:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_APPLICATION_ID=your_discord_application_id_here
-DISCORD_PUBLIC_KEY=your_discord_public_key_here
 GOOGLE_API_KEY=your_google_api_key_here
 ```
 
-*Note: If you are using Agentuity features, ensure your `AGENTUITY_API_KEY` is also set. For sensitive values, prefer `agentuity env set --secret ...`.*
+*Note: You can get a Google API Key from [Google AI Studio](https://aistudio.google.com/).*
 
-You can set environment variables via Agentuity:
+### 3. Install & Run
 
-```bash
-agentuity env set DISCORD_PUBLIC_KEY $DISCORD_PUBLIC_KEY
-agentuity env set --secret DISCORD_APPLICATION_ID $DISCORD_APPLICATION_ID
-agentuity env set --secret DISCORD_TOKEN $DISCORD_TOKEN
-agentuity env set --secret GOOGLE_API_KEY $GOOGLE_API_KEY
-```
-
-### Create a new agent (optional)
-
-```bash
-agentuity agent new
-```
-
-### 2. Install Dependencies
-
+Install dependencies:
 ```bash
 bun install
 ```
 
-### 3. Run the Bot
-
-You can start the bot in development mode using:
-
+Start the bot locally:
 ```bash
-agentuity dev
+bun run dev
 ```
 
-Or directly via Bun:
+You should see: `Ready! Logged in as Vera#1234`
 
-```bash
-bun run start
-```
+### 4. Testing
 
-The bot will log in and print `Ready! Logged in as [Tag]` to the console.
+Once the bot is running and in your server:
+
+1.  **Direct Message**: Send a DM to the bot saying "Hello!". It should reply.
+2.  **Server Chat**: In a channel where the bot is present, mention it: `@Vera what do you think of this project?`.
+3.  **Link Summary**: Paste a link to a news article or documentation page. Vera should automatically reply with a summary.
+4.  **Slash Command**: Type `/vera message: tell me a joke`. (Note: Slash commands may take up to an hour to propagate globally, but are instant in the guild if you updated the code correctly).
 
 ## 🌐 Deployment
 

@@ -1,15 +1,22 @@
 import { GoogleGenAI } from '@google/genai';
 import { MODEL_NAME } from './constants';
 
-if (!process.env.GOOGLE_API_KEY) {
-  console.error('Missing the GOOGLE_API_KEY environment variable');
+let client: GoogleGenAI | null = null;
 
-  process.exit(1);
+function getClient(): GoogleGenAI {
+  if (!process.env.GOOGLE_API_KEY) {
+    throw new Error('Missing the GOOGLE_API_KEY environment variable');
+  }
+
+  if (!client) {
+    client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+  }
+
+  return client;
 }
 
-const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
-
 export async function runModel(prompt: string) {
+  const client = getClient();
   const result = await client.models.generateContent({
     model: MODEL_NAME,
     contents: [

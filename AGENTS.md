@@ -26,11 +26,21 @@ Vera actively learns from the conversation.
 
 ## Architecture
 
-Vera is implemented in `src/agents/vera/index.ts` (logic) and `src/bot.ts` (Discord interface).
+Vera is implemented across multiple modules in `src/agents/vera/`:
 
 ### Key Components
-- **`bot.ts`**: The Discord client entry point. Listens for `messageCreate` events.
+- **`bot.ts`**: The Discord client entry point. Listens for `messageCreate` events and slash commands.
+- **`index.ts`**: Webhook agent entry point for processing HTTP requests.
+- **`service.ts`**: Shared core logic used by both the bot and webhook agent. This eliminates code duplication and ensures consistent behavior.
 - **`memory.ts`**: Handles storing and retrieving user context and knowledge.
 - **`summaries.ts`**: Logic for fetching and summarizing web content.
 - **`tweets.ts`**: Logic for parsing and reconstructing Twitter threads.
 - **`llm.ts`**: Interface to the Large Language Model for generating responses and summaries.
+- **`knowledge.ts`**: Extracts and formats knowledge triples from conversations.
+- **`discord.ts`**: Utilities for building and sending Discord webhook payloads.
+
+### Design Principles
+- **DRY (Don't Repeat Yourself)**: The core agent logic lives in `service.ts` and is reused by both the Discord Gateway bot (`bot.ts`) and the webhook agent (`index.ts`).
+- **Separation of Concerns**: Each module has a specific responsibility, making the codebase maintainable.
+- **Type Safety**: TypeScript is used throughout to catch errors early.
+

@@ -1,21 +1,5 @@
 import { Client, GatewayIntentBits, Partials, Events, REST, Routes } from 'discord.js';
-import { AGENT_NAME } from './agents/vera/constants';
-import { runModel } from './agents/vera/llm';
-import {
-    addMemoryRecord,
-    getMemory,
-    getRecentMemories,
-    rememberUser,
-} from './agents/vera/memory';
-import { summarizeLink } from './agents/vera/summaries';
-import { buildThreadFromTweet } from './agents/vera/tweets';
-import {
-    extractUrls,
-    isTweetUrl,
-    serverOrDefault,
-} from './agents/vera/utils';
-import { extractKnowledge, formatKnowledge } from './agents/vera/knowledge';
-import { truncateContent } from './agents/vera/text';
+import { processVeraRequest } from './agents/vera/service';
 import type { AgentContext } from '@agentuity/sdk';
 import { metrics, trace } from '@opentelemetry/api';
 
@@ -43,80 +27,8 @@ async function buildResponse(params: {
     serverName: string;
     isMentioned?: boolean;
 }): Promise<BuiltResponse> {
-    const { messageText, userId, userName, serverId, serverName, isMentioned = false } = params;
     const ctx = await agentContextPromise;
-
-    const previousMemory = await getMemory(ctx, serverId, userId);
-    await rememberUser(ctx, serverId, userId, userName, messageText, previousMemory);
-
-    const urls = extractUrls(messageText);
-    const tweetUrls = urls.filter(isTweetUrl);
-    const otherUrls = urls.filter((url) => !isTweetUrl(url));
-
-    const linkSummaries: string[] = [];
-    for (const url of otherUrls) {
-        linkSummaries.push(await summarizeLink(url, ctx, serverName));
-    }
-
-    const tweetThreads: { url: string; thread: string }[] = [];
-    for (const url of tweetUrls) {
-        tweetThreads.push(await buildThreadFromTweet(url, ctx, serverName, userName));
-    }
-
-    const knowledgeTriples = await extractKnowledge(messageText, ctx);
-    await addMemoryRecord(ctx, {
-        id: `${Date.now()}`,
-        serverId,
-        userId,
-        userName,
-        message: truncateContent(messageText),
-        knowledge: knowledgeTriples,
-        createdAtIso: new Date().toISOString(),
-    });
-
-    const recentKnowledge = await getRecentMemories(ctx, serverId, { userId, limit: 5 });
-    const knowledgeContext = recentKnowledge.flatMap((rec) => rec.knowledge ?? []).slice(-5);
-
-    const conversationContext =
-        previousMemory?.lastMessage && previousMemory.lastMessage !== messageText
-            ? `Last time you said: "${previousMemory.lastMessage}". `
-            : '';
-
-    const shouldRespond = urls.length === 0 || isMentioned;
-
-    let generalResponse = '';
-    if (shouldRespond) {
-        generalResponse = await runModel(
-            `You are ${AGENT_NAME}, a kind and fun multiuser assistant on a Discord server named "${serverOrDefault(
-                serverName
-            )}". ` +
-                `User "${userName}" sent: "${messageText}". ${conversationContext}` +
-                `Respond concisely with awareness of the server context and invite follow-ups if helpful.` +
-                (knowledgeContext.length > 0 ? ` Known recent facts: ${formatKnowledge(knowledgeContext)}` : '')
-        );
-    }
-
-    const sections: string[] = [];
-
-    if (linkSummaries.length > 0) {
-        sections.push(`**Link summaries:**\n${linkSummaries.join('\n')}`);
-    }
-
-    if (tweetThreads.length > 0) {
-        const threadText = tweetThreads
-            .map((entry) => `From ${entry.url} (via xcancel):\n${entry.thread}`)
-            .join('\n\n');
-        sections.push(`**Thread drafts:**\n${threadText}`);
-    }
-
-    if (generalResponse) {
-        sections.push(generalResponse);
-    }
-
-    if (sections.length === 0) {
-        sections.push('I did not find URLs, but I am ready to help with summaries or questions.');
-    }
-
+    const { sections } = await processVeraRequest(ctx, params);
     return { sections };
 }
 
@@ -230,23 +142,22 @@ export async function startBot() {
 
 async function createAgentContext(): Promise<AgentContext> {
     try {
-        // @ts-expect-error createServerContext is exported at runtime but missing from the type surface
         const agentuitySdk = (await import('@agentuity/sdk')) as any;
         const createServerContext = agentuitySdk.createServerContext as
             | undefined
             | ((req: {
-                  tracer: unknown;
-                  meter: unknown;
-                  logger: unknown;
-                  orgId?: string;
-                  projectId?: string;
-                  deploymentId?: string;
-                  runId?: string;
-                  sessionId?: string;
-                  devmode?: boolean;
-                  sdkVersion: string;
-                  agents: Array<{ id: string; name: string; filename: string; description?: string }>;
-              }) => Promise<AgentContext>);
+                tracer: unknown;
+                meter: unknown;
+                logger: unknown;
+                orgId?: string;
+                projectId?: string;
+                deploymentId?: string;
+                runId?: string;
+                sessionId?: string;
+                devmode?: boolean;
+                sdkVersion: string;
+                agents: Array<{ id: string; name: string; filename: string; description?: string }>;
+            }) => Promise<AgentContext>);
 
         if (!createServerContext) {
             throw new Error('Agentuity SDK createServerContext not available');
@@ -305,6 +216,6 @@ async function createAgentContext(): Promise<AgentContext> {
                     kvStore.delete(`${name}:${key}`);
                 },
             },
-        } as AgentContext;
+        } as unknown as AgentContext;
     }
 }
