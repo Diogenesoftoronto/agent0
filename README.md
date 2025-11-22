@@ -4,13 +4,13 @@
     <br/>
 </div>
 
-# 🤖 Agent0: Vera (Bun Agent Project)
+# 🤖 Agent0: Vera 
 
 Agent0 exists because I wanted a better Discord bot than what I experienced in the Latent Space server. That bot could spin up threads from tweets with summaries and an xcancel link. Vera does that too, and also remembers people in chat so you can ask about prior conversations or users.
 
 ## 🌟 What is Vera?
 
-Vera is more than just a chatbot. She is an AI agent capable of:
+Vera is more than just a chatbot (not really). She is an AI agent capable of:
 - **Summarizing Links**: Automatically provides summaries for shared URLs.
 - **Unrolling Tweets**: Fetches and displays full threads from X/Twitter links.
 - **Remembering Context**: Keeps track of conversations and learns facts about the server and users.
