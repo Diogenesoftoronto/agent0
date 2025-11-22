@@ -17,35 +17,9 @@ import {
 import { extractKnowledge, formatKnowledge } from './agents/vera/knowledge';
 import { truncateContent } from './agents/vera/text';
 import type { AgentContext } from '@agentuity/sdk';
+import { metrics, trace } from '@opentelemetry/api';
 
-// Mock AgentContext for reuse of existing functions with a minimal in-memory KV.
-const kvStore = new Map<string, unknown>();
-const mockCtx: AgentContext = {
-    logger: console as any,
-    agentId: 'discord-bot',
-    projectId: 'agent0',
-    env: process.env,
-    kv: {
-        async get(name: string, key: string) {
-            const composite = `${name}:${key}`;
-            const exists = kvStore.has(composite);
-            return {
-                exists,
-                data: {
-                    async object<T>() {
-                        return exists ? (kvStore.get(composite) as T) : undefined;
-                    },
-                },
-            };
-        },
-        async set(name: string, key: string, value: unknown) {
-            kvStore.set(`${name}:${key}`, value);
-        },
-        async delete(name: string, key: string) {
-            kvStore.delete(`${name}:${key}`);
-        },
-    },
-} as any;
+const agentContextPromise = createAgentContext();
 
 const client = new Client({
     intents: [
@@ -70,9 +44,10 @@ async function buildResponse(params: {
     isMentioned?: boolean;
 }): Promise<BuiltResponse> {
     const { messageText, userId, userName, serverId, serverName, isMentioned = false } = params;
+    const ctx = await agentContextPromise;
 
-    const previousMemory = await getMemory(mockCtx, serverId, userId);
-    await rememberUser(mockCtx, serverId, userId, userName, messageText, previousMemory);
+    const previousMemory = await getMemory(ctx, serverId, userId);
+    await rememberUser(ctx, serverId, userId, userName, messageText, previousMemory);
 
     const urls = extractUrls(messageText);
     const tweetUrls = urls.filter(isTweetUrl);
@@ -80,16 +55,16 @@ async function buildResponse(params: {
 
     const linkSummaries: string[] = [];
     for (const url of otherUrls) {
-        linkSummaries.push(await summarizeLink(url, mockCtx, serverName));
+        linkSummaries.push(await summarizeLink(url, ctx, serverName));
     }
 
     const tweetThreads: { url: string; thread: string }[] = [];
     for (const url of tweetUrls) {
-        tweetThreads.push(await buildThreadFromTweet(url, mockCtx, serverName, userName));
+        tweetThreads.push(await buildThreadFromTweet(url, ctx, serverName, userName));
     }
 
-    const knowledgeTriples = await extractKnowledge(messageText, mockCtx);
-    await addMemoryRecord(mockCtx, {
+    const knowledgeTriples = await extractKnowledge(messageText, ctx);
+    await addMemoryRecord(ctx, {
         id: `${Date.now()}`,
         serverId,
         userId,
@@ -99,7 +74,7 @@ async function buildResponse(params: {
         createdAtIso: new Date().toISOString(),
     });
 
-    const recentKnowledge = await getRecentMemories(mockCtx, serverId, { userId, limit: 5 });
+    const recentKnowledge = await getRecentMemories(ctx, serverId, { userId, limit: 5 });
     const knowledgeContext = recentKnowledge.flatMap((rec) => rec.knowledge ?? []).slice(-5);
 
     const conversationContext =
@@ -243,10 +218,93 @@ export async function startBot() {
     }
 
     try {
+        // Ensure Agentuity context is ready (KV, logger, etc.)
+        await agentContextPromise;
         await registerSlashCommands(token, applicationId);
         await client.login(token);
     } catch (error) {
         console.error('Failed to login:', error);
         process.exit(1);
+    }
+}
+
+async function createAgentContext(): Promise<AgentContext> {
+    try {
+        // @ts-expect-error createServerContext is exported at runtime but missing from the type surface
+        const agentuitySdk = (await import('@agentuity/sdk')) as any;
+        const createServerContext = agentuitySdk.createServerContext as
+            | undefined
+            | ((req: {
+                  tracer: unknown;
+                  meter: unknown;
+                  logger: unknown;
+                  orgId?: string;
+                  projectId?: string;
+                  deploymentId?: string;
+                  runId?: string;
+                  sessionId?: string;
+                  devmode?: boolean;
+                  sdkVersion: string;
+                  agents: Array<{ id: string; name: string; filename: string; description?: string }>;
+              }) => Promise<AgentContext>);
+
+        if (!createServerContext) {
+            throw new Error('Agentuity SDK createServerContext not available');
+        }
+
+        const tracer = trace.getTracer('discord-bot');
+        const meter = metrics.getMeter('discord-bot');
+        const logger = (agentuitySdk.logger?.child?.({ service: 'discord-bot' }) ??
+            console) as AgentContext['logger'];
+
+        return await createServerContext({
+            tracer,
+            meter,
+            logger,
+            orgId: process.env.AGENTUITY_ORG_ID,
+            projectId: process.env.AGENTUITY_PROJECT_ID ?? 'agent0',
+            deploymentId: process.env.AGENTUITY_DEPLOYMENT_ID ?? 'discord-bot',
+            runId: 'discord-bot',
+            sessionId: 'discord-bot',
+            devmode: process.env.NODE_ENV !== 'production',
+            sdkVersion: agentuitySdk?.internal?.getConfig?.()?.version ?? 'discord-bot',
+            agents: [
+                {
+                    id: 'discord-bot',
+                    name: 'discord-bot',
+                    filename: 'src/bot.ts',
+                    description: 'Discord gateway bot using Agentuity KV',
+                },
+            ],
+        });
+    } catch (error) {
+        console.warn('Falling back to in-memory context (Agentuity KV unavailable):', error);
+        const kvStore = new Map<string, unknown>();
+        return {
+            logger: console as any,
+            agentId: 'discord-bot',
+            projectId: process.env.AGENTUITY_PROJECT_ID ?? 'agent0',
+            env: process.env,
+            kv: {
+                async get(name: string, key: string) {
+                    const composite = `${name}:${key}`;
+                    const exists = kvStore.has(composite);
+                    return {
+                        exists,
+                        data: {
+                            async object<T>() {
+                                return exists ? (kvStore.get(composite) as T) : undefined;
+                            },
+                        },
+                    };
+                },
+                async set(name: string, key: string, value: unknown) {
+                    kvStore.set(`${name}:${key}`, value);
+                },
+                async delete(name: string, key: string) {
+                    kvStore.delete(`${name}:${key}`);
+                },
+            },
+        } as AgentContext;
     }
 }
