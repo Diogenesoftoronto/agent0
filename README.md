@@ -37,10 +37,12 @@ agentuity login
 
 ### 1. Setup Environment
 
-Create a `.env` file in the root directory (or use the existing one) and add your Discord Bot Token:
+Create a `.env` file in the root directory (or use the existing one) and add your Discord application credentials:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_APPLICATION_ID=your_discord_application_id_here
+DISCORD_PUBLIC_KEY=your_discord_public_key_here
 ```
 
 *Note: If you are using Agentuity features, ensure your `AGENTUITY_API_KEY` is also set. For sensitive values, prefer `agentuity env set --secret ...`.*
@@ -50,6 +52,7 @@ You can set environment variables via Agentuity:
 ```bash
 agentuity env set DISCORD_PUBLIC_KEY $DISCORD_PUBLIC_KEY
 agentuity env set --secret DISCORD_APPLICATION_ID $DISCORD_APPLICATION_ID
+agentuity env set --secret DISCORD_TOKEN $DISCORD_TOKEN
 ```
 
 ### Create a new agent (optional)
