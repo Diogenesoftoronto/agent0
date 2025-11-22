@@ -56,7 +56,6 @@ export default async function Agent(
 
     // Use the shared service to process the request
     const {
-      sections,
       linkSummaries,
       tweetThreads,
       generalResponse,
